@@ -13,8 +13,9 @@
 #include <vector>
 #include "Vector.h"
 #include <omp.h>
+#include <random>
+//
 
-#define M_PI 3.14159265359
 
 
 void save_image(const char* filename, const unsigned char* tableau, int w, int h) { // (0,0) is top-left corner
@@ -156,15 +157,17 @@ int main() {
     int W = 1024;
     int H = 1024;
     double fov = 60 * M_PI / 180;
-    int nb_ray = 100;
+    int nb_ray = 50;
     
     Scene s;
     s.light_intensity = 100000000000;
     double R = 10;
+    Vector cameraPosition = (0. ,0. ,0.);
+    double focus_distance = 55.;
 
     
     
-    Sphere slum(Vector(0, 20, 20), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
+    Sphere slum(Vector(0, 20, focus_distance), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
     Sphere s1(Vector(-15,0, -50),10, Vector (1,1,1));
     Sphere s7(Vector(15,0, -50),10, Vector (1,1,1));
     Sphere s2(Vector(0,-2000-20, 0),2000, Vector (1,1,0)); //ground
@@ -189,18 +192,34 @@ int main() {
     
     
 #pragma omp parallel for
-    
-    
+
 // Lance des thread pour la boucle for suivante
     for (int i = 0; i < H; i++) {
 
         for (int j = 0; j < W; j++) {
-
-            Vector direction(j-W/2, i-H/2, -W/ (2*tan(fov/2)));
-            direction.normalize();
-            Ray r(Vector(0,0,0), direction);
+            
             Vector Color(0.,0.,0.);
             for (int k = 0; k < nb_ray; k++) {
+                
+                double r1, r2, dx, dy;
+//                r1 = uniform(engine);
+//                r2 = uniform(engine);
+                r1 =0.3;
+                r2 = 0.4;
+                dx = cos(2 * M_PI * r2)* sqrt(-2*log(r1));
+                dy = sin(2 * M_PI * r2)* sqrt(-2*log(r1));
+                
+                
+                double dx_apperture = (rand() / (RAND_MAX) -0.5) *5. ;
+                double dy_apperture = (rand() / (RAND_MAX) -0.5) *5.;
+
+                
+                Vector direction(j-W/2 +0.5 +dx, i-H/2+0.5+dy, -W/ (2*tan(fov/2)));
+                direction.normalize();
+                
+                Vector destination = cameraPosition + focus_distance * direction;
+                Vector new_origin = cameraPosition +Vector (dx_apperture, dy_apperture, 0);
+                Ray r(new_origin, (destination-new_origin).getNormalized());
                 Color += getColor(r, s, 5) / nb_ray;
             }
 //            Vector Color = getColor(r, s, 5) ;
@@ -210,7 +229,9 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance4-diaphragme.bmp",&image[0], W, H);
+    save_image("seance4-ouv_cam.bmp",&image[0], W, H);
+    
+//    1h01.54
     
  
     return 0;
