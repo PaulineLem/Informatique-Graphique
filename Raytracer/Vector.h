@@ -62,11 +62,72 @@ public :
     Vector origin, direction;
 };
 
-class Sphere {
+class Object {
 public :
-    Sphere(const Vector &origin, double rayon, const Vector &color, bool mirror = false, bool transp = false, double emissivity =1) : O(origin), R(rayon), albedo(color), is_mirror(mirror), is_transparent(transp), emissivity(emissivity){};
+    Object(){}
+    
+    virtual bool intersection(const Ray&r, Vector &P, Vector &N, double &T) const = 0;
+    Vector albedo;
+    bool is_mirror;
+    bool is_transparent;
+    double emissivity;
+    
+    
+};
+
+class Triangle : public Object{
+public :
+    Triangle(const Vector& A, const Vector &B, const Vector& C, const Vector &color, bool mirror = false, bool transp = false, double emissivity =1) : A(A), B(B), C(C) {
+        albedo = color;
+        is_mirror = mirror;
+        is_transparent = transp;
+        this->emissivity =  emissivity;
+    };
+    
+    bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
+        
+        
+        N = cross(B-A, C-A);
+        N.normalize();
+
+        
+        double denom = dot(r.direction, N);
+        if (std::abs(denom)< 1E-12) return false; // ray parallele
+        t = dot(A-r.origin, N)/dot(r.direction, N);
+        if (t<0) return false ; //intersect derriere
+        
+        P = r.origin + t*r.direction;
+        double APAB = dot(P-A, B-A);
+        double ACAB = dot(C-A, B-A);
+        double ABAB = dot(B-A, B-A);
+        double APAC = dot(P-A, C-A);
+        double ACAC = dot(C-A, C-A);
+        double det = ABAB*ACAC-ACAB*ACAB;
+        double beta = (APAB*ACAC-APAC*ACAB)/det;
+        double gamma = (ABAB*APAC -ACAB*APAB)/det;
+        if (beta<0) return false;
+        if (gamma<0) return false;
+        if (beta+gamma>1) return false;
+        return true;
+            
+    };
+    Vector A, B, C, N;
+};
+
+
+class Sphere : public Object{
+public :
+    Sphere(const Vector &origin, double rayon, const Vector &color, bool mirror = false, bool transp = false, double emissivity =1) : O(origin), R(rayon){
+        albedo = color;
+        is_mirror = mirror;
+        is_transparent = transp;
+        this->emissivity = emissivity;
+    };
+
     
     bool intersection (const Ray& r,  Vector& P, Vector& N, double &t) const {
+        
+
         
         double a =1;
         double b = 2*dot(r.direction, r.origin - O);
@@ -92,27 +153,25 @@ public :
     
     Vector O;
     double R;
-    Vector albedo;
-    bool is_mirror;
-    bool is_transparent;
-    double intensity;
-    double emissivity;
+
 };
 
 class Scene {
 public :
     Scene() {};
-    void addSphere(const Sphere& s) {spheres.push_back(s);}
+    void addSphere(const Sphere& s) {objects.push_back((Object*)&s);}
+    void addTriangle(const Triangle& s) {objects.push_back((Object*)&s);}
+
     
     bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t) {
         
         bool has_intersection = false;
         min_t = 1E99;
         
-        for (int i=0; i<spheres.size(); i++) {
+        for (int i=0; i<objects.size(); i++) {
             Vector localP, localN;
             double t;
-            bool local_has_intersection = spheres[i].intersection(r, localP, localN, t);
+            bool local_has_intersection = objects[i]->intersection(r, localP, localN, t);
             if (local_has_intersection){
                 has_intersection = true;
                 if (t<min_t){
@@ -129,5 +188,7 @@ public :
 
     Sphere *lumiere;
     double light_intensity;
-    std::vector<Sphere> spheres;
+    std::vector<Object*> objects;
+
+
 };

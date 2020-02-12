@@ -12,6 +12,8 @@
 #include <iostream>
 #include <vector>
 #include "Vector.h"
+#include "random.hpp"
+
 #include <omp.h>
 #include <random>
 //
@@ -70,17 +72,16 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
         double t;
         bool has_intersection = s.intersection(r, P,N, sphere_id, t);
         Vector pixel_intensity(0,0,0);
-    
-
+        
     
         if (has_intersection) {
-            if(s.spheres[sphere_id].is_mirror) {
+            if(s.objects[sphere_id]->is_mirror) {
                 Vector dir_mir = r.direction - 2*dot(N, r.direction)*N;
                 Ray mirrorRay(P+eps*N, dir_mir);
                 pixel_intensity = getColor(mirrorRay, s, nbrefl-1);
             }
             else {
-                if (s.spheres[sphere_id].is_transparent) {
+                if (s.objects[sphere_id]->is_transparent) {
                     double n1=1;
                     double n2=1.3;
                     Vector Ntransp(N);
@@ -106,7 +107,7 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     Vector LP = L-P;
                     LP.getNormalized();
                     Vector randSdir = randomcos(LP);
-                    Vector xi = L + randSdir*s.spheres[0].R;
+                    Vector xi = L + randSdir*dynamic_cast<Sphere*>(s.objects[0])->R;
                     Vector wi = xi-P;
                     wi.getNormalized();
                     double d2 = wi.getNorm2();
@@ -126,7 +127,7 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     }
                     
                     else {
-                        pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.spheres[sphere_id].albedo;
+                        pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
                     }
 
                         
@@ -134,8 +135,8 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     
                     wi= randomcos(N);
                     Ray indirectRay(P+eps*N, wi);
-                    pixel_intensity += getColor(indirectRay, s, nbrefl-1) * s.spheres[sphere_id].albedo ;
-                    pixel_intensity += s.spheres[sphere_id].albedo * s.spheres[sphere_id].emissivity;
+                    pixel_intensity += getColor(indirectRay, s, nbrefl-1) * s.objects[sphere_id]->albedo ;
+                    pixel_intensity += s.objects[sphere_id]->albedo * s.objects[sphere_id]->emissivity;
                 
 
                 }
@@ -143,7 +144,6 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
             
         }
 
-    
     
         
         return pixel_intensity;
@@ -160,10 +160,12 @@ int main() {
     int nb_ray = 50;
     
     Scene s;
-    s.light_intensity = 100000000000;
+    s.light_intensity = 10000000000000;
     double R = 10;
-    Vector cameraPosition = (0. ,0. ,0.);
+    Vector cameraPosition = (static_cast<void>(0.) ,static_cast<void>(0.) ,0.);
     double focus_distance = 55.;
+    
+    
 
     
     
@@ -174,9 +176,12 @@ int main() {
     Sphere s3(Vector(0,200+100, 0),2000, Vector (1,0,1)); //ceiling
     Sphere s4(Vector(-2000-50,0, 0),2000, Vector (0,1,1)); // left wall
     Sphere s5(Vector(2000+50,0, 0),2000, Vector (0,0,1)); // right wall
-    Sphere s6(Vector(0, 0, -2000-100),2000, Vector (1,0,0)); // back wall
+    Sphere s6(Vector(0, 0, -2000-100),2000, Vector (1,1,0)); // back wall
+    
+    Triangle tri(Vector(-10, -10, -20), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
     
     s.addSphere(slum);
+    s.addTriangle(tri);
     s.addSphere(s1);
     s.addSphere(s2);
     s.addSphere(s3);
@@ -202,16 +207,19 @@ int main() {
             for (int k = 0; k < nb_ray; k++) {
                 
                 double r1, r2, dx, dy;
-//                r1 = uniform(engine);
-//                r2 = uniform(engine);
-                r1 =0.3;
-                r2 = 0.4;
+                Vector rand = random_2();
+                
+                r1 = rand[0];
+                r2 = rand[1];
+
+
                 dx = cos(2 * M_PI * r2)* sqrt(-2*log(r1));
                 dy = sin(2 * M_PI * r2)* sqrt(-2*log(r1));
                 
                 
-                double dx_apperture = (rand() / (RAND_MAX) -0.5) *5. ;
-                double dy_apperture = (rand() / (RAND_MAX) -0.5) *5.;
+                Vector rand2 = random_2();
+                double dx_apperture = (rand2[0] -0.5) *5. ;
+                double dy_apperture = (rand2[1]-0.5) *5.;
 
                 
                 Vector direction(j-W/2 +0.5 +dx, i-H/2+0.5+dy, -W/ (2*tan(fov/2)));
@@ -223,13 +231,14 @@ int main() {
                 Color += getColor(r, s, 5) / nb_ray;
             }
 //            Vector Color = getColor(r, s, 5) ;
+//            std::cout << Color[0];
 
             image[((H-i-1)*W + j) * 3 + 0] = std::min(255., std::max(0.,pow(Color[0], 1/2.2)));
             image[((H-i-1)*W + j) * 3 + 1] = std::min(255., std::max(0.,pow(Color[1], 1/2.2)));
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance4-ouv_cam.bmp",&image[0], W, H);
+    save_image("seance5-2.bmp",&image[0], W, H);
     
 //    1h01.54
     
