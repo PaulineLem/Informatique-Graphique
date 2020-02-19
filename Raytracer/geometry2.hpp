@@ -49,9 +49,7 @@ public :
     bool is_mirror;
     bool is_transparent;
     double emissivity;
-    
-    
-    
+
 };
 
 class Triangle : public Object{
@@ -66,15 +64,14 @@ public :
     bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
         
         
-        N = cross(B-A, C-A);
+        N = -cross(B-A, C-A);
         N.normalize();
 
-        
         double denom = dot(r.direction, N);
         if (std::abs(denom)< 1E-12) return false; // ray parallele
         t = dot(C-r.origin, N)/dot(r.direction, N);
         if (t<0) return false ; //intersect derriere
-        
+
         P = r.origin + t*r.direction;
         double APAB = dot(P-A, B-A);
         double ACAB = dot(C-A, B-A);
@@ -88,6 +85,8 @@ public :
         if (gamma<0) return false;
         if (beta+gamma>1) return false;
         return true;
+        
+
             
     };
     const Vector &A, &B, &C;
@@ -105,6 +104,26 @@ public:
         this->emissivity =  emissivity;
             
         readOBJ(obj);
+            
+        for (int i = 0; i < vertices.size(); i++) {
+            vertices[i] = scaling * vertices[i] + offset;
+        }
+            
+        bb.bmin =vertices[0];
+        bb.bmax =vertices[0];
+                    
+
+
+        for (int i=1; i<vertices.size(); i++) {
+            for (int j=0; j<3; j++) {
+
+                bb.bmin[j] = std::min(bb.bmin[j],vertices[i][j]);
+                bb.bmax[j] = std::max(bb.bmax[j],vertices[i][j]);
+
+            }
+        
+        }
+            
        
         };
 
@@ -294,21 +313,7 @@ public:
 
         }
         fclose(f);
-        
-        bb.bmin =vertices[0];
-        bb.bmax =vertices[0];
-                   
-
-
-       for (int i=1; i<vertices.size(); i++) {
-           for (int j=0; j<3; j++) {
-
-               bb.bmin[j] = std::min(bb.bmin[j],vertices[i][j]);
-               bb.bmax[j] = std::max(bb.bmax[j],vertices[i][j]);
-
-           }
-       
-       }
+            
 
         
     }
@@ -347,7 +352,6 @@ public:
             int i0 = indices[i].vtxi ;
             int i1 = indices[i].vtxj;
             int i2 = indices[i].vtxk;
-
             Triangle tri(vertices[i0], vertices[i1], vertices[i2], albedo, is_mirror, is_transparent, emissivity);
             Vector localP, localN;
             double localt;
@@ -364,9 +368,7 @@ public:
         
     };
     
-//    std::vector<int> faceGroup;
-//    std::vector<int> normalIds;
-//    std::vector<int> uvIds;
+
     std::vector<TriangleIndices> indices;
     std::vector<Vector> vertices;
     std::vector<Vector> normals;
@@ -377,10 +379,10 @@ public:
     std::vector<int> w, h;
     
     
-    Vector albedo;
-    bool is_mirror;
-    bool is_transparent;
-    double emissivity;
+//    Vector albedo;
+//    bool is_mirror;
+//    bool is_transparent;
+//    double emissivity;
 private :
     Bbox bb;
 };

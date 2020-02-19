@@ -19,6 +19,9 @@
 #include <random>
 #include <algorithm>
 
+#include <typeinfo>
+
+
 //
 
 
@@ -107,17 +110,21 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     
 //                    Eclairage direct
                     Vector L = s.lumiere->O;
-                    Vector LP = L-P;
-                    LP.getNormalized();
-                    Vector randSdir = randomcos(LP);
+//                    Vector LP = L-P;
+                    Vector LP = P-L;
+                    LP.normalize();
+                    Vector randSdir = randomcos_2(LP);
                     Vector xi = L + randSdir*dynamic_cast<Sphere*>(s.objects[0])->R;
                     Vector wi = xi-P;
-                    wi.getNormalized();
-                    double d2 = wi.getNorm2();
+                    wi.normalize();
+                    double d2 = (xi-P).getNorm2();
+                    Vector Np= randSdir;
                     double costheta = std::max(0., dot(N, wi));
-                    double costhetaprime = std::max(0.,dot(randSdir,-wi ));
-                    double costhetasecond = std::max(0.,dot(randSdir,LP ));
-                    
+                    double costhetaprime = dot(Np,-wi );
+//                    double costhetasecond = std::max(0.,dot(randSdir,LP ));
+                    double costhetasecond = dot(LP,randSdir);
+
+                                    
                     Vector light_or = P + eps * N;
                     Ray light_ray(light_or, wi);
                     Vector P_light, N_light;
@@ -125,21 +132,29 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     double t_light;
                     bool has_intersection_light= s.intersection(light_ray, P_light, N_light, sphere_id_light, t_light);
                     
+//                    pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
+
                     if ( has_intersection_light && t_light*t_light < d2*0.99 ){
                         pixel_intensity = Vector(0,0,0);
+
                     }
-                    
+
                     else {
                         pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
                     }
 
                         
 //                       Eclairage indirect
-                    
-                    wi= randomcos(N);
+
+                    wi= randomcos_2(N);
                     Ray indirectRay(P+eps*N, wi);
                     pixel_intensity += getColor(indirectRay, s, nbrefl-1) * s.objects[sphere_id]->albedo ;
                     pixel_intensity += s.objects[sphere_id]->albedo * s.objects[sphere_id]->emissivity;
+                    
+//                    if (sphere_id==5){
+//                    std :: cout << s.objects[sphere_id]->albedo[0];
+//                    }
+
                 
 
                 }
@@ -163,7 +178,7 @@ int main() {
     int nb_ray = 8;
     
     Scene s;
-    s.light_intensity = 10000000000000;
+    s.light_intensity = 100000000000;
     double R = 15;
     Vector cameraPosition = (static_cast<void>(0.) ,static_cast<void>(0.) ,0.);
     double focus_distance = 55.;
@@ -172,18 +187,20 @@ int main() {
 
     
     
-    Sphere slum(Vector(0, 20, focus_distance), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
-    Sphere s1(Vector(-15,0, -50),10, Vector (1,1,1));
+    Sphere slum(Vector(0, 20, 60), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
+//    Sphere slum(Vector(0, 20, focus_distance), R,Vector (1,1,1));
+
+    Sphere s1(Vector(-15,0, -focus_distance),10, Vector (1,1,1));
     Sphere s7(Vector(15,0, -50),10, Vector (1,1,1));
     Sphere s2(Vector(0,-2000-20, 0),2000, Vector (1,1,0)); //ground
     Sphere s3(Vector(0,200+100, 0),2000, Vector (1,0,1)); //ceiling
     Sphere s4(Vector(-2000-50,0, 0),2000, Vector (0,1,1)); // left wall
     Sphere s5(Vector(2000+50,0, 0),2000, Vector (0,0,1)); // right wall
-    Sphere s6(Vector(0, 0, -2000-100),2000, Vector (1,1,0)); // back wall
+    Sphere s6(Vector(0, 0, -2000-100),2000, Vector (0,1,0)); // back wall
     
     Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
     
-    Geometry g1("BeautifulGirl.obj", 10, Vector(0,-20, -55), Vector (1,1,1));
+    Geometry g1("cube.obj", 1, Vector(-15,0, -50), Vector (1,1,1));
     
     s.addSphere(slum);
     
@@ -222,11 +239,11 @@ int main() {
 
                 dx = cos(2 * M_PI * r2)* sqrt(-2*log(r1));
                 dy = sin(2 * M_PI * r2)* sqrt(-2*log(r1));
-                
+
                 
                 Vector rand2 = random_2();
-                double dx_apperture = (rand2[0] -0.5) *.01 ;
-                double dy_apperture = (rand2[1]-0.5) *.01;
+                double dx_apperture = (rand2[0] -0.5) *0.1 ;
+                double dy_apperture = (rand2[1]-0.5) *0.1;
 
                 
                 Vector direction(j-W/2 +0.5 +dx, i-H/2+0.5+dy, -W/ (2*tan(fov/2)));
@@ -235,6 +252,7 @@ int main() {
                 Vector destination = cameraPosition + focus_distance * direction;
                 Vector new_origin = cameraPosition +Vector (dx_apperture, dy_apperture, 0);
                 Ray r(new_origin, (destination-new_origin).getNormalized());
+//                Ray r(Vector(0,0,0), direction);
                 Color += getColor(r, s, 5) / nb_ray;
             }
 //            Vector Color = getColor(r, s, 5) ;
@@ -245,7 +263,7 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance5-fille-test-2-triangle.bmp",&image[0], W, H);
+    save_image("seance5-fille-test-cube.bmp",&image[0], W, H);
     
     
  
