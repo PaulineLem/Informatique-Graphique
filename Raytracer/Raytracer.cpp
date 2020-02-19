@@ -13,9 +13,12 @@
 #include <vector>
 #include "Vector.h"
 #include "random.hpp"
+#include "geometry2.hpp"
 
 #include <omp.h>
 #include <random>
+#include <algorithm>
+
 //
 
 
@@ -157,11 +160,11 @@ int main() {
     int W = 1024;
     int H = 1024;
     double fov = 60 * M_PI / 180;
-    int nb_ray = 50;
+    int nb_ray = 8;
     
     Scene s;
     s.light_intensity = 10000000000000;
-    double R = 10;
+    double R = 15;
     Vector cameraPosition = (static_cast<void>(0.) ,static_cast<void>(0.) ,0.);
     double focus_distance = 55.;
     
@@ -178,17 +181,21 @@ int main() {
     Sphere s5(Vector(2000+50,0, 0),2000, Vector (0,0,1)); // right wall
     Sphere s6(Vector(0, 0, -2000-100),2000, Vector (1,1,0)); // back wall
     
-    Triangle tri(Vector(-10, -10, -20), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
+    Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
+    
+    Geometry g1("BeautifulGirl.obj", 10, Vector(0,-20, -55), Vector (1,1,1));
     
     s.addSphere(slum);
-    s.addTriangle(tri);
-    s.addSphere(s1);
+    
+    s.addGeometry(g1);
+//    s.addTriangle(tri);
+//    s.addSphere(s1);
     s.addSphere(s2);
     s.addSphere(s3);
     s.addSphere(s4);
     s.addSphere(s5);
     s.addSphere(s6);
-    s.addSphere(s7);
+//    s.addSphere(s7);
     s.lumiere = &slum;
 
     
@@ -218,8 +225,8 @@ int main() {
                 
                 
                 Vector rand2 = random_2();
-                double dx_apperture = (rand2[0] -0.5) *5. ;
-                double dy_apperture = (rand2[1]-0.5) *5.;
+                double dx_apperture = (rand2[0] -0.5) *.01 ;
+                double dy_apperture = (rand2[1]-0.5) *.01;
 
                 
                 Vector direction(j-W/2 +0.5 +dx, i-H/2+0.5+dy, -W/ (2*tan(fov/2)));
@@ -238,9 +245,8 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance5-2.bmp",&image[0], W, H);
+    save_image("seance5-fille-test-2-triangle.bmp",&image[0], W, H);
     
-//    1h01.54
     
  
     return 0;
