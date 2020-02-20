@@ -200,7 +200,7 @@ int main() {
     
     Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
     
-    Geometry g1("cube.obj", 1, Vector(-15,0, -50), Vector (1,1,1));
+    Geometry g1("BeautifulGirl.obj", 10, Vector(0,-20, -50), Vector (1,1,1));
     
     s.addSphere(slum);
     
