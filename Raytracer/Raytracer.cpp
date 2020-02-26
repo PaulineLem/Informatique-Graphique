@@ -263,7 +263,7 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance5-fille-test-cube.bmp",&image[0], W, H);
+    save_image("seance6.bmp",&image[0], W, H);
     
     
  
