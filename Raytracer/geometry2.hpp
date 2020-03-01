@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include<list>
 
 class TriangleIndices {
 public:
@@ -40,11 +41,21 @@ public:
     Vector bmin, bmax;
 };
 
+class BVH{
+public:
+    BVH *fg, *fd;
+    int i0, i1;
+    Bbox bbox;
+    
+};
+
 class Object {
 public :
     Object(){}
     
-    virtual bool intersection(const Ray&r, Vector &P, Vector &N, double &t) const = 0;
+    virtual bool intersection(const Ray&r, Vector &P, Vector &N, double &t, Vector &color) const = 0;
+//    virtual bool intersection(const Ray&r, Vector &P, Vector &N, double &t) const = 0;
+
     Vector albedo;
     bool is_mirror;
     bool is_transparent;
@@ -61,10 +72,18 @@ public :
         this->emissivity =  emissivity;
     };
     
-    bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
+    bool intersection(const Ray& r, Vector& P, Vector &N, double &t, Vector &color) const {
+//        bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
+
+        double alpha, beta, gamma;
+        color = albedo;
+        return intersection(r, P, N, t, alpha, beta, gamma);
         
+    };
+    
+    bool intersection(const Ray& r, Vector& P, Vector &N, double &t, double &alpha, double &beta, double &gamma) const {
         
-        N = -cross(B-A, C-A);
+        N = cross(B-A, C-A);
         N.normalize();
 
         double denom = dot(r.direction, N);
@@ -79,8 +98,9 @@ public :
         double APAC = dot(P-A, C-A);
         double ACAC = dot(C-A, C-A);
         double det = ABAB*ACAC-ACAB*ACAB;
-        double beta = (APAB*ACAC-APAC*ACAB)/det;
-        double gamma = (ABAB*APAC -ACAB*APAB)/det;
+        beta = (APAB*ACAC-APAC*ACAB)/det;
+        gamma = (ABAB*APAC -ACAB*APAB)/det;
+        alpha = 1-beta-gamma;
         if (beta<0) return false;
         if (gamma<0) return false;
         if (beta+gamma>1) return false;
@@ -104,28 +124,18 @@ public:
         this->emissivity =  emissivity;
             
         readOBJ(obj);
+//        add_texture(const char* filename)
+
+
             
         for (int i = 0; i < vertices.size(); i++) {
             vertices[i] = scaling * vertices[i] + offset;
         }
-            
-        bb.bmin =vertices[0];
-        bb.bmax =vertices[0];
-                    
+        build_bvh(&bvh, 0, indices.size());
 
-
-        for (int i=1; i<vertices.size(); i++) {
-            for (int j=0; j<3; j++) {
-
-                bb.bmin[j] = std::min(bb.bmin[j],vertices[i][j]);
-                bb.bmax[j] = std::max(bb.bmax[j],vertices[i][j]);
-
-            }
-        
-        }
-            
-       
         };
+    
+
 
     void readOBJ(const char* obj) {
 
@@ -313,59 +323,246 @@ public:
 
         }
         fclose(f);
-            
-
         
-    }
-
-
-    void add_texture(const char* filename) {
-
-        textures.resize(textures.size() + 1);
-        w.resize(w.size() + 1);
-        h.resize(h.size() + 1);
-
-        FILE* f;
-        f = fopen(filename, "rb");
-        unsigned char info[54];
-        fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
-
-        w[w.size() - 1] = *(int*)&info[18]; // extract image height and width from header
-        h[h.size() - 1] = *(int*)&info[22];
-
-        int size = 3 * w[w.size() - 1] * h[h.size() - 1];
-        textures[textures.size() - 1].resize(size); // allocate 3 bytes per pixel
-        fread(&textures[textures.size() - 1][0], sizeof(unsigned char), size, f); // read the rest of the data at once
-        fclose(f);
-
-        for (int i = 0; i < size; i += 3) {
-            std::swap(textures[textures.size() - 1][i], textures[textures.size() - 1][i + 2]);
-        }
-    }
-    bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
-        if (!bb.intersection(r)) return false;
-        t=1E99;
-        bool has_intersection = false;
-        for (int i=0; i<indices.size(); i++ ){
-            
-            
-            int i0 = indices[i].vtxi ;
-            int i1 = indices[i].vtxj;
-            int i2 = indices[i].vtxk;
-            Triangle tri(vertices[i0], vertices[i1], vertices[i2], albedo, is_mirror, is_transparent, emissivity);
-            Vector localP, localN;
-            double localt;
-            if (tri.intersection(r, localP, localN, localt)) {
-                has_intersection = true;
-                if(localt<t){
-                    t=localt;
-                    P=localP;
-                    N=localN;
-                }
+        f = fopen("Beautiful Girl.mtl","r");
+        while (!feof(f)) {
+            char line[255];
+            fgets(line, 255, f);
+            if (line[0]=='m' && line[4]=='K' && line[5]=='d'){
+                char texturefile[255];
+                sscanf(line, "map_Kd %100s\n", texturefile);
+                add_texture((std::string("texturesbmp/") + std::string(texturefile)).c_str());
             }
         }
-        return has_intersection;
+        fclose(f);
+    }
+
+//    void add_texture (const char* filename) {
+//        int comp;
+//        texwidth.resize(texwidth.size()+1);
+//        texheight.resize(texheight.size()+1);
+//        textures.resize(textures.size()+1);
+//        unsigned char* values = stbi_load(filename,texwidth[id], texheight[id], comp, 3);
+//        textures[id] = values;
+//
+//        //        for (int i = 0; i < size; i += 3) {
+//        //            std::swap(textures[textures.size() - 1][i], textures[textures.size() - 1][i + 2]);
+//        //        }
+//    }
+    
+    Bbox build_bb(int i0, int i1){
+        Bbox bb;
+        bb.bmin =vertices[indices[i0].vtxi];
+        bb.bmax =vertices[indices[i0].vtxi];
+        for (int i=i0; i<i1; i++) {// triangle
+//            for (int j=0; j<3; j++) {//sommet
+            for( int k=0; k<3; k++){//dimension
+                    bb.bmin[k] = std::min(bb.bmin[k],vertices[indices[i].vtxi][k]);
+                    bb.bmax[k] = std::max(bb.bmax[k],vertices[indices[i].vtxi][k]);
+                    
+                    bb.bmin[k] = std::min(bb.bmin[k],vertices[indices[i].vtxj][k]);
+                    bb.bmax[k] = std::max(bb.bmax[k],vertices[indices[i].vtxj][k]);
+                    
+                    bb.bmin[k] = std::min(bb.bmin[k],vertices[indices[i].vtxk][k]);
+                    bb.bmax[k] = std::max(bb.bmax[k],vertices[indices[i].vtxk][k]);
+                    
+                }
+
+
+
+            }
         
+//        }
+    return bb;
+    };
+    
+    void build_bvh(BVH* node, int i0, int i1){
+    node -> bbox =build_bb(i0,i1);
+    node->i0 = i0;
+    node->i1 = i1;
+    node->fg = NULL;
+    node->fd = NULL;
+
+        
+    
+    Vector diag = node->bbox.bmax-node->bbox.bmin;
+    int split_dim;
+    if(diag[0]>diag[1] && diag[0]>diag[2]){
+
+            split_dim = 0;
+  
+    }
+    else {
+        if (diag[1]>diag[0] && diag[1]>diag[2])
+            {
+            split_dim = 1;
+            }
+          
+        else {
+            split_dim =2 ;
+        }
+    
+    }
+    double split_val = node -> bbox.bmin[split_dim] + diag[split_dim]/2;
+    
+    int pivot = i0-1;
+    
+        for(int i=i0; i<i1; i++){
+        double center_split_dim = (vertices[indices[i].vtxi][split_dim] + vertices[indices[i].vtxj][split_dim] + vertices[indices[i].vtxk][split_dim])/3;
+        if(center_split_dim <split_val){
+            pivot ++;
+            std::swap(indices[i].vtxi, indices[pivot].vtxi);
+            std::swap(indices[i].vtxj, indices[pivot].vtxj);
+            std::swap(indices[i].vtxk, indices[pivot].vtxk);
+            
+            std::swap(indices[i].ni, indices[pivot].ni);
+            std::swap(indices[i].nj, indices[pivot].nj);
+            std::swap(indices[i].nk, indices[pivot].nk);
+            
+            std::swap(indices[i].uvi, indices[pivot].uvi);
+            std::swap(indices[i].uvj,indices[pivot].uvj);
+            std::swap(indices[i].uvk, indices[pivot].uvk);
+            
+            std::swap(indices[i].faceGroup, indices[pivot].faceGroup);
+
+                        }
+        }
+    
+    if(pivot <= i0|| pivot>=i1){
+    return;
+    }
+    node->fg= new BVH();
+    build_bvh(node->fg, i0, pivot);
+    
+    node->fd= new BVH();
+    build_bvh(node->fd, pivot, i1);
+
+    };
+    
+
+       void add_texture(const char* filename) {
+    
+           textures.resize(textures.size() + 1);
+           w.resize(w.size() + 1);
+           h.resize(h.size() + 1);
+    
+           FILE* f;
+           f = fopen(filename, "r");
+//           f = fopen("texturesbmp/12c14c70.bmp", "rb");
+
+           unsigned char info[54];
+
+           fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+           
+
+    
+           w[w.size() - 1] = *(int*)&info[18]; // extract image height and width from header
+           h[h.size() - 1] = *(int*)&info[22];
+    
+           int size = 3 * w[w.size() - 1] * h[h.size() - 1];
+
+
+           textures[textures.size() - 1].resize(size);
+
+
+           fread(&textures[textures.size() - 1][0], sizeof(unsigned char), size, f); // read the rest of the data at once
+           fclose(f);
+
+    
+           for (int i = 0; i < size; i += 3) {
+               std::swap(textures[textures.size() - 1][i], textures[textures.size() - 1][i + 2]);
+           }
+       };
+    bool intersection(const Ray& r, Vector& P, Vector &N, double &t, Vector &color) const {
+//        bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
+
+//        if (!bb.intersection(r)) return false;
+//        t=1E99;
+//        bool has_intersection = false;
+//        for (int i=0; i<indices.size(); i++ ){
+//
+//
+//            int i0 = indices[i].vtxi ;
+//            int i1 = indices[i].vtxj;
+//            int i2 = indices[i].vtxk;
+//            Triangle tri(vertices[i0], vertices[i1], vertices[i2], albedo, is_mirror, is_transparent, emissivity);
+//            Vector localP, localN;
+//            double alpha, beta, gamma;
+//            double localt;
+//            if (tri.intersection(r, localP, localN, localt,alpha, beta, gamma)) {
+//                has_intersection = true;
+//                if(localt<t){
+//                    t=localt;
+//                    P=localP;
+////                    N=localN;
+//                    N = normals[indices[i].ni] * alpha + normals[indices[i].nj]*beta + normals[indices[i].nk]*gamma;
+//                    N.normalize();
+//                    int textureId = indices[i].faceGroup;
+//                    int x = (uvs[indices[i].uvi][0] * alpha + uvs[indices[i].uvj][0]*beta + uvs[indices[i].uvk][0]*gamma) * (w[textureId]-1);
+//                    int y = (uvs[indices[i].uvi][1] * alpha + uvs[indices[i].uvj][1]*beta + uvs[indices[i].uvk][1]*gamma) * (h[textureId]-1);
+//
+//                    double cr = (textures[textureId][(y*w[textureId]+x)*3])/255.;
+//                    double cg = (textures[textureId][(y*w[textureId]+x)*3+1])/255.;
+//                    double cb = (textures[textureId][(y*w[textureId]+x)*3+2])/255.;
+//
+//                    color = Vector(cr,cg,cb);
+//                }
+//            }
+//        }
+//        return has_intersection;
+    t=1E99;
+    bool has_intersection = false;
+    if (!bvh.bbox.intersection(r)) return false;
+
+    std::list<const BVH*> l;
+    l.push_front(&bvh);
+
+    
+        while(!l.empty()){
+            const BVH* current = l.front();
+            l.pop_front();
+            if(current->fg && current->fg->bbox.intersection(r)){
+                l.push_back(current->fg);
+            }
+            if(current->fd && current->fd->bbox.intersection(r)){
+                l.push_back(current->fd);
+            }
+            if(!current->fg){
+                        for (int i=current->i0; i<current->i1; i++ ){
+                
+                
+                            int a = indices[i].vtxi ;
+                            int b = indices[i].vtxj;
+                            int c = indices[i].vtxk;
+                            Triangle tri(vertices[a], vertices[b], vertices[c], albedo, is_mirror, is_transparent, emissivity);
+                            Vector localP, localN;
+                            double alpha, beta, gamma;
+                            double localt;
+                            if (tri.intersection(r, localP, localN, localt,alpha, beta, gamma)) {
+                                has_intersection = true;
+                                if(localt<t){
+                                    t=localt;
+                                    P=localP;
+//                                    N=localN;
+                                    N = normals[indices[i].ni] * alpha + normals[indices[i].nj]*beta + normals[indices[i].nk]*gamma;
+                                    N.normalize();
+                                    int textureId = indices[i].faceGroup;
+                                    int x = (uvs[indices[i].uvi][0] * alpha + uvs[indices[i].uvj][0]*beta + uvs[indices[i].uvk][0]*gamma) * (w[textureId]-1);
+                                    int y = (uvs[indices[i].uvi][1] * alpha + uvs[indices[i].uvj][1]*beta + uvs[indices[i].uvk][1]*gamma) * (h[textureId]-1);
+
+                                    double cr = (textures[textureId][(y*w[textureId]+x)*3])/255.;
+                                    double cg = (textures[textureId][(y*w[textureId]+x)*3+1])/255.;
+                                    double cb = (textures[textureId][(y*w[textureId]+x)*3+2])/255.;
+
+                                    color = Vector(cr,cg,cb);
+                                }
+                            }
+                
+            }
+        }
+
+        }
+        return has_intersection;
     };
     
 
@@ -375,57 +572,15 @@ public:
     std::vector<Vector> uvs; // Vector en 3D mais on n'utilise que 2 composantes
     std::vector<Vector> vertexcolors;
 
-    std::vector<std::vector<unsigned char> > textures;
-    std::vector<int> w, h;
-    
-    
-//    Vector albedo;
-//    bool is_mirror;
-//    bool is_transparent;
-//    double emissivity;
+
 private :
-    Bbox bb;
+//    Bbox bb;
+    BVH bvh;
+    std::vector<std::vector<unsigned char> > textures;
+    std::vector<int> w,h;
 };
 
 
-//class Triangle : public Object{
-//public :
-//    Triangle(const Vector& A, const Vector &B, const Vector& C, const Vector &color, bool mirror = false, bool transp = false, double emissivity =1) : A(A), B(B), C(C) {
-//        albedo = color;
-//        is_mirror =  mirror;
-//        is_transparent = transp;
-//        this->emissivity =  emissivity;
-//    };
-//
-//    bool intersection(const Ray& r, Vector& P, Vector &N, double &t) const {
-//
-//
-//        N = cross(B-A, C-A);
-//        N.normalize();
-//
-//
-//        double denom = dot(r.direction, N);
-//        if (std::abs(denom)< 1E-12) return false; // ray parallele
-//        t = dot(A-r.origin, N)/dot(r.direction, N);
-//        if (t<0) return false ; //intersect derriere
-//
-//        P = r.origin + t*r.direction;
-//        double APAB = dot(P-A, B-A);
-//        double ACAB = dot(C-A, B-A);
-//        double ABAB = dot(B-A, B-A);
-//        double APAC = dot(P-A, C-A);
-//        double ACAC = dot(C-A, C-A);
-//        double det = ABAB*ACAC-ACAB*ACAB;
-//        double beta = (APAB*ACAC-APAC*ACAB)/det;
-//        double gamma = (ABAB*APAC -ACAB*APAB)/det;
-//        if (beta<0) return false;
-//        if (gamma<0) return false;
-//        if (beta+gamma>1) return false;
-//        return true;
-//
-//    };
-//    const Vector &A, &B, &C;
-//};
 
 
 class Sphere : public Object{
@@ -438,7 +593,9 @@ public :
     };
 
     
-    bool intersection (const Ray& r,  Vector& P, Vector& N, double &t) const {
+    bool intersection (const Ray& r,  Vector& P, Vector& N, double &t, Vector &color) const {
+//    bool intersection (const Ray& r,  Vector& P, Vector& N, double &t) const {
+
         
 
         
@@ -461,6 +618,8 @@ public :
         P = r.origin + t*r.direction;
         N = (P-O).getNormalized();
         
+        color = albedo;
+        
         return true;
     };
     
@@ -478,15 +637,19 @@ public :
 
 
     
-    bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t) {
+    bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t, Vector &color) {
+//        bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t) {
+
         
         bool has_intersection = false;
         min_t = 1E99;
         
         for (int i=0; i<objects.size(); i++) {
-            Vector localP, localN;
+            Vector localP, localN, localColor;
             double t;
-            bool local_has_intersection = objects[i]->intersection(r, localP, localN, t);
+            bool local_has_intersection = objects[i]->intersection(r, localP, localN, t, localColor);
+//            bool local_has_intersection = objects[i]->intersection(r, localP, localN, t);
+
             if (local_has_intersection){
                 has_intersection = true;
                 if (t<min_t){
@@ -494,6 +657,7 @@ public :
                     P= localP;
                     N=  localN;
                     sphere_id = i;
+                    color = localColor;
                 }
             }
         }
@@ -504,6 +668,7 @@ public :
     Sphere *lumiere;
     double light_intensity;
     std::vector<Object*> objects;
+    
 
 
 };

@@ -73,10 +73,12 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
     
         double eps=0.001;
         if (nbrefl == 0) return Vector(0,0,0);
-        Vector P, N;
+        Vector P, N, albedo;
         int sphere_id;
         double t;
-        bool has_intersection = s.intersection(r, P,N, sphere_id, t);
+        bool has_intersection = s.intersection(r, P,N, sphere_id, t, albedo);
+//    bool has_intersection = s.intersection(r, P,N, sphere_id, t);
+
         Vector pixel_intensity(0,0,0);
         
     
@@ -127,10 +129,12 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                                     
                     Vector light_or = P + eps * N;
                     Ray light_ray(light_or, wi);
-                    Vector P_light, N_light;
+                    Vector P_light, N_light, albedo_light;
                     int sphere_id_light;
                     double t_light;
-                    bool has_intersection_light= s.intersection(light_ray, P_light, N_light, sphere_id_light, t_light);
+                    bool has_intersection_light= s.intersection(light_ray, P_light, N_light, sphere_id_light, t_light, albedo_light);
+//                                        bool has_intersection_light= s.intersection(light_ray, P_light, N_light, sphere_id_light, t_light);
+                    
                     
 //                    pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
 
@@ -140,7 +144,8 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
                     }
 
                     else {
-                        pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
+//                        pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* s.objects[sphere_id]->albedo;
+                        pixel_intensity = (s.light_intensity/(4*M_PI*d2)*costheta*costhetaprime/costhetasecond)* albedo;
                     }
 
                         
@@ -148,7 +153,9 @@ Vector getColor(const Ray& r, Scene& s, int nbrefl) {
 
                     wi= randomcos_2(N);
                     Ray indirectRay(P+eps*N, wi);
-                    pixel_intensity += getColor(indirectRay, s, nbrefl-1) * s.objects[sphere_id]->albedo ;
+//                    pixel_intensity += getColor(indirectRay, s, nbrefl-1) * s.objects[sphere_id]->albedo ;
+                    pixel_intensity += getColor(indirectRay, s, nbrefl-1) * albedo ;
+
                     pixel_intensity += s.objects[sphere_id]->albedo * s.objects[sphere_id]->emissivity;
                     
 //                    if (sphere_id==5){
@@ -175,19 +182,19 @@ int main() {
     int W = 1024;
     int H = 1024;
     double fov = 60 * M_PI / 180;
-    int nb_ray = 8;
+    int nb_ray = 20;
     
     Scene s;
     s.light_intensity = 100000000000;
     double R = 15;
     Vector cameraPosition = (static_cast<void>(0.) ,static_cast<void>(0.) ,0.);
-    double focus_distance = 55.;
+    double focus_distance = 35.;
     
     
 
     
     
-    Sphere slum(Vector(0, 20, 60), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
+    Sphere slum(Vector(15, 70, -40), R,Vector (1,1,1),false, false,  s.light_intensity/(4 * M_PI*M_PI*R*R));
 //    Sphere slum(Vector(0, 20, focus_distance), R,Vector (1,1,1));
 
     Sphere s1(Vector(-15,0, -focus_distance),10, Vector (1,1,1));
@@ -198,9 +205,9 @@ int main() {
     Sphere s5(Vector(2000+50,0, 0),2000, Vector (0,0,1)); // right wall
     Sphere s6(Vector(0, 0, -2000-100),2000, Vector (0,1,0)); // back wall
     
-    Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
+    Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0), false, false, false);
     
-    Geometry g1("BeautifulGirl.obj", 10, Vector(0,-20, -50), Vector (1,1,1));
+    Geometry g1("Beautiful Girl.obj", 15, Vector(0,-20, -35), Vector (1,1,1));
     
     s.addSphere(slum);
     
@@ -263,7 +270,7 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance6.bmp",&image[0], W, H);
+    save_image("seance6-1-beautiful-girl-para-textures-test-3-autresigne.bmp",&image[0], W, H);
     
     
  
