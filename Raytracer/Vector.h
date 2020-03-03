@@ -33,12 +33,18 @@ public:
         return result;
     }
     
+//    Vector reflect(const Vector& N) const {
+//        Vector refl = *this - 2. * dot(*this, N)*N;
+//        return refl;
+//    }
+
     Vector& operator+=(const Vector& v2){
         coord[0] += v2[0];
         coord[1] += v2[1];
         coord[2] += v2[2];
         return *this;
     }
+    
     
     
 private:

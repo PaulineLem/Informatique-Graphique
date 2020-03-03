@@ -68,6 +68,12 @@ void save_image(const char* filename, const unsigned char* tableau, int w, int h
     delete[] row;
 }
 
+//double phong_BRDF(const Vector &wi, const Vector &wo, const Vector &N, double phong_expo){
+//    Vector refl = wo.reflect(N);
+//    double lobe = std::pow(dot(refl, wi), phong_expo)* (phong_expo +2)/(2.*M_PI);
+//    return lobe;
+//}
+
 
 Vector getColor(const Ray& r, Scene& s, int nbrefl) {
     
@@ -170,7 +176,7 @@ int main() {
     int W = 1024;
     int H = 1024;
     double fov = 60 * M_PI / 180;
-    int nb_ray = 120;
+    int nb_ray = 12;
     
     Scene s;
     s.light_intensity = 1000000000;
@@ -189,8 +195,8 @@ int main() {
     Sphere s7(Vector(15,0, -focus_distance),10, Vector (1,1,1), false, true);
     Sphere s2(Vector(0,-2000-20, 0),2000, Vector (1,1,1)); //ground
     Sphere s3(Vector(0,2000+100, 0),2000, Vector (1,1,1)); //ceiling
-    Sphere s4(Vector(-2000-50,0, 0),2000, Vector (0,1,0)); // left wall
-    Sphere s5(Vector(2000+50,0, 0),2000, Vector (0,0,1)); // right wall
+    Sphere s4(Vector(-2000-50,0, 0),2000, Vector (1,1,0)); // left wall
+    Sphere s5(Vector(2000+50,0, 0),2000, Vector (1,0,1)); // right wall
     Sphere s6(Vector(0, 0, -2000-100),2000, Vector (0,1,1)); // back wall
     
     Triangle tri(Vector(-10, -10, -55), Vector(10, -10, -20), Vector(0, 10, -20), Vector(1, 0, 0));
@@ -259,7 +265,7 @@ int main() {
             image[((H-i-1)*W + j) * 3 + 2] = std::min(255., std::max(0.,pow(Color[2], 1/2.2)));
         }
     }
-    save_image("seance6-test-beautiful-triangle-3.bmp",&image[0], W, H);
+    save_image("seance6-test-beautiful-triangle-3-moins-de-ray-2.bmp",&image[0], W, H);
     
     
     

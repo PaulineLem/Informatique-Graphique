@@ -34,7 +34,35 @@ public:
         double t_min_z = std::min(t_1_z, t_2_z);
         double t_max_z = std::max(t_1_z, t_2_z);
         
+        double t_far = std::min(std::min(t_max_x,t_max_y),t_max_z) ;
+        if(t_far<0) return false;
+        
         if (std::min(std::min(t_max_x,t_max_y),t_max_z) - std::max(std::max(t_min_x, t_min_y), t_min_z) > 0) return true ;
+        return false;
+    };
+    bool intersection(const Ray& r, double &t) const {
+        double t_1_x = (bmin[0]-r.origin[0])/r.direction[0];
+        double t_2_x = (bmax[0]-r.origin[0])/r.direction[0];
+        double t_min_x = std::min(t_1_x, t_2_x);
+        double t_max_x = std::max(t_1_x, t_2_x);
+        
+        double t_1_y = (bmin[1]-r.origin[1])/r.direction[1];
+        double t_2_y = (bmax[1]-r.origin[1])/r.direction[1];
+        double t_min_y = std::min(t_1_y, t_2_y);
+        double t_max_y = std::max(t_1_y, t_2_y);
+        
+        double t_1_z = (bmin[2]-r.origin[2])/r.direction[2];
+        double t_2_z = (bmax[2]-r.origin[2])/r.direction[2];
+        double t_min_z = std::min(t_1_z, t_2_z);
+        double t_max_z = std::max(t_1_z, t_2_z);
+        
+        double t_far = std::min(std::min(t_max_x,t_max_y),t_max_z) ;
+        if(t_far<0) return false;
+        
+        double t_close =std::max(std::max(t_min_x, t_min_y), t_min_z);
+        if(t_close>0) t=t_close; else t=0;
+        
+        if (t_far - t_close > 0) return true ;
         return false;
     };
     
@@ -400,14 +428,14 @@ public:
             }
         }
         
-        if(pivot <= i0|| pivot>=i1){
+        if(pivot < i0|| pivot>=i1-1 || i1==i0+1){
             return;
         }
         node->fg= new BVH();
-        build_bvh(node->fg, i0, pivot);
+        build_bvh(node->fg, i0, pivot+1);
         
         node->fd= new BVH();
-        build_bvh(node->fd, pivot, i1);
+        build_bvh(node->fd, pivot+1, i1);
         
     };
     
@@ -449,18 +477,40 @@ public:
         bool has_intersection = false;
         if (!bvh.bbox.intersection(r)) return false;
         
-        std::list<const BVH*> l;
-        l.push_front(&bvh);
+//        std::list<const BVH*> l;
+        const BVH* l[40];
+        int idx_back = -1;
         
         
-        while(!l.empty()){
-            const BVH* current = l.front();
-            l.pop_front();
-            if(current->fg && current->fg->bbox.intersection(r)){
-                l.push_back(current->fg);
+        
+
+//        l.push_front(&bvh);
+        idx_back++; l[idx_back]=&bvh;
+
+        
+        
+        while(idx_back>=0){
+//            const BVH* current = l.front();
+            const BVH* current = l[idx_back];
+
+//            l.pop_front();
+            idx_back --;
+            // font -> back, permet de faire un meilleur parcours de la liste (en profonfeur)
+            double t_boxe ;
+            if(current->fg && current->fg->bbox.intersection(r, t_boxe)){
+                if (t_boxe<t){
+                idx_back++; l[idx_back]=current->fg;
+
+//                l.push_back(current->fg);
+                }
             }
-            if(current->fd && current->fd->bbox.intersection(r)){
-                l.push_back(current->fd);
+            if(current->fd && current->fd->bbox.intersection(r, t_boxe)){
+//                if(current->fg && current->fg->bbox.intersection(r, t_boxe)){
+                    if (t_boxe<t){
+//                l.push_back(current->fd);
+                        idx_back++; l[idx_back]=current->fd;
+
+                    }
             }
             if(!current->fg){
                 for (int i=current->i0; i<current->i1; i++ ){
