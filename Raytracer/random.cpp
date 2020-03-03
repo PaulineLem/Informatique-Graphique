@@ -56,7 +56,7 @@ tangent1.normalize();
 Vector tangent2 = cross(tangent1, N);
     
 
-return V[0]*tangent2 + V[1] * tangent2+ V[2] *N;
+return V[0]*tangent1 + V[1] * tangent2+ V[2] *N;
 }
 
 Vector random_2() {

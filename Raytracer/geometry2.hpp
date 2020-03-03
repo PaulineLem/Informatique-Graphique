@@ -83,7 +83,7 @@ public :
     
     bool intersection(const Ray& r, Vector& P, Vector &N, double &t, double &alpha, double &beta, double &gamma) const {
         
-        N = cross(B-A, C-A);
+        N = -cross(B-A, C-A);
         N.normalize();
 
         double denom = dot(r.direction, N);
@@ -101,9 +101,9 @@ public :
         beta = (APAB*ACAC-APAC*ACAB)/det;
         gamma = (ABAB*APAC -ACAB*APAB)/det;
         alpha = 1-beta-gamma;
-        if (beta<0) return false;
-        if (gamma<0) return false;
-        if (beta+gamma>1) return false;
+        if (beta<0 || beta>1) return false;
+        if (gamma<0 || gamma>1) return false;
+        if (alpha<0 || alpha>1) return false;
         return true;
         
 
@@ -124,10 +124,12 @@ public:
         this->emissivity =  emissivity;
             
         readOBJ(obj);
+        build_bvh(&bvh, 0, indices.size());
+
 //        add_texture(const char* filename)
 
 
-            
+//
         for (int i = 0; i < vertices.size(); i++) {
             vertices[i] = scaling * vertices[i] + offset;
         }
@@ -387,13 +389,13 @@ public:
     
     Vector diag = node->bbox.bmax-node->bbox.bmin;
     int split_dim;
-    if(diag[0]>diag[1] && diag[0]>diag[2]){
+    if((diag[0]>diag[1]) && (diag[0]>diag[2])){
 
             split_dim = 0;
   
     }
     else {
-        if (diag[1]>diag[0] && diag[1]>diag[2])
+        if ((diag[1]>diag[0]) && (diag[1]>diag[2]))
             {
             split_dim = 1;
             }
@@ -637,7 +639,7 @@ public :
 
 
     
-    bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t, Vector &color) {
+    bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t, Vector &color) const{
 //        bool intersection (const Ray& r,  Vector& P, Vector& N, int& sphere_id, double& min_t) {
 
         
