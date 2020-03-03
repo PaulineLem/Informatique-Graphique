@@ -32,13 +32,14 @@ public:
         result.normalize();
         return result;
     }
+    
     Vector& operator+=(const Vector& v2){
         coord[0] += v2[0];
         coord[1] += v2[1];
         coord[2] += v2[2];
         return *this;
     }
-
+    
     
 private:
     double coord[3];
@@ -57,7 +58,7 @@ Vector randomcos(const Vector &N);
 
 
 class Ray {
-public :
+    public :
     Ray(const Vector& o, const Vector& d ) : origin(o), direction(d) {};
     Vector origin, direction;
 };
